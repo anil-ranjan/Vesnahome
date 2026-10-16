@@ -1,1 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VesnaHome | Buy, Sell & Rent Property</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="#">Vesna<span>Home</span></a>
+  <nav><a href="#properties">Buy</a><a href="#properties">Rent</a><a href="#how">How it works</a><a href="#contact">Contact</a></nav>
+  <button class="post-btn" onclick="openPost()">+ Post Property Free</button>
+</header>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">PROPERTY MADE SIMPLE</div>
+    <h1>Find a place that<br><span>feels like home.</span></h1>
+    <p>Explore verified homes for sale and rent. Connect directly with property owners without registration.</p>
+    <div class="search-box">
+      <div class="purpose"><button class="active" data-purpose="Buy">Buy</button><button data-purpose="Rent">Rent</button></div>
+      <div class="search-row">
+        <select id="location"><option value="">All locations</option><option>Mahavir Enclave</option><option>Dwarka</option><option>Janakpuri</option><option>Uttam Nagar</option></select>
+        <select id="type"><option value="">Property type</option><option>Flat</option><option>Independent House</option><option>Builder Floor</option></select>
+        <select id="budget"><option value="">Any budget</option><option value="5000000">Up to ₹50 Lac</option><option value="7500000">Up to ₹75 Lac</option><option value="10000000">Up to ₹1 Crore</option></select>
+        <button onclick="applyFilters()">Search</button>
+      </div>
+    </div>
+    <div class="stats"><div><strong>120+</strong><span>Properties</span></div><div><strong>45+</strong><span>Locations</span></div><div><strong>Direct</strong><span>Owner contact</span></div></div>
+  </div>
+  <div class="hero-art"><div class="sun"></div><div class="building b1"></div><div class="building b2"></div><div class="building b3"></div><div class="tree t1"></div><div class="tree t2"></div><div class="float-card"><b>New listing</b><span>2 BHK in Mahavir Enclave</span><strong>₹68 Lac</strong></div></div>
+</section>
+<section class="quick"><div><span>01</span><b>Choose location</b><small>Find homes in your preferred area</small></div><div><span>02</span><b>Compare properties</b><small>Review photos, price and details</small></div><div><span>03</span><b>Contact owner</b><small>Connect directly by phone or WhatsApp</small></div></section>
+<main id="properties">
+  <div class="section-head"><div><div class="eyebrow dark">LATEST PROPERTIES</div><h2>Homes worth exploring</h2></div><div class="filter-pills"><button class="active" data-filter="All">All</button><button data-filter="Sale">For Sale</button><button data-filter="Rent">For Rent</button></div></div>
+  <div class="advanced"><select id="bhk"><option value="">Any BHK</option><option value="1">1 BHK</option><option value="2">2 BHK</option><option value="3">3 BHK</option></select><select id="status"><option value="">Any status</option><option>Ready to Move</option><option>Under Construction</option></select><button onclick="resetFilters()">Reset filters</button><span id="resultCount"></span></div>
+  <div id="propertyGrid" class="grid"></div>
+</main>
+<section id="how" class="owner-cta"><div><div class="eyebrow">FOR OWNERS & AGENTS</div><h2>Have a property to sell or rent?</h2><p>Submit the details without creating an account. Every listing can be reviewed before it appears publicly.</p></div><button onclick="openPost()">Post Property Free →</button></section>
+<footer id="contact"><a class="brand light" href="#">Vesna<span>Home</span></a><p>A simple marketplace for buying, selling and renting property.</p><div>© 2026 VesnaHome · Static website prototype</div></footer>
 
+<div class="modal" id="detailsModal"><div class="modal-card wide"><button class="close" onclick="closeModal('detailsModal')">×</button><div id="detailsContent"></div></div></div>
+<div class="modal" id="postModal"><div class="modal-card"><button class="close" onclick="closeModal('postModal')">×</button><h2>Post your property</h2><p class="muted">No login required. Submission will be saved locally in this prototype.</p><form id="postForm">
+<div class="form-grid"><label>Listing purpose<select name="listingType" required><option>Sale</option><option>Rent</option></select></label><label>Property type<select name="propertyType"><option>Flat</option><option>Independent House</option><option>Builder Floor</option></select></label><label class="full">Property title<input name="title" required placeholder="e.g. 2 BHK flat near metro"></label><label>Location<input name="location" required></label><label>Price (₹)<input name="price" type="number" required></label><label>BHK<input name="bhk" type="number" min="1" max="10" required></label><label>Area (sqft)<input name="area" type="number" required></label><label>Owner name<input name="owner" required></label><label>Phone<input name="phone" required></label><label class="full">YouTube video URL<input name="youtube" placeholder="Optional"></label><label class="full">Description<textarea name="description" rows="4"></textarea></label><label class="full upload">Property photos<input type="file" accept="image/*" multiple><small>Prototype only: selected files are not uploaded.</small></label></div><button class="submit">Submit Property</button></form></div></div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body></html>
