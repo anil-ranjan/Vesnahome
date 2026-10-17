@@ -516,13 +516,13 @@ window.addEventListener('click', event => {
 });
 
 async function init() {
-  if (SUPABASE_PUBLISHABLE_KEY.includes('PASTE_YOUR_')) {
-    console.error('Add your Supabase publishable key to app.js first.');
-    toast('Supabase publishable key is not configured.');
-    return;
+  try {
+    await updateAuthUI();
+    await loadProperties();
+  } catch (error) {
+    console.error('VesnaHome initialization error:', error);
+    toast('Unable to load VesnaHome data.');
   }
-  await updateAuthUI();
-  await loadProperties();
 }
 
 init();
