@@ -1,3 +1,11 @@
+const SUPABASE_URL = 'https://flhlxxlxncbuvtsfjrnv.supabase.co';
+
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_qQ1sZKEic6q93X6yGoh6Vg_Uyfj-633';
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
 const properties=[
 {id:1,title:'2 BHK Flat for Sale in Mahavir Enclave',location:'Mahavir Enclave',type:'Flat',listing:'Sale',price:6800000,bhk:2,area:750,status:'Ready to Move',floor:'3 of 4',owner:'Lucky Chauhan',phone:'919999999901',photos:13,img:'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80',desc:'A spacious, well-lit apartment close to the metro, school and local market.',video:'dQw4w9WgXcQ'},
 {id:2,title:'2 BHK Builder Floor near Dwarka',location:'Dwarka',type:'Builder Floor',listing:'Sale',price:4500000,bhk:2,area:675,status:'Ready to Move',floor:'1 of 4',owner:'Aditya',phone:'919999999902',photos:8,img:'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1000&q=80',desc:'East-facing builder floor with balcony, modular kitchen and nearby transport.'},
