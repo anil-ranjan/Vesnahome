@@ -1,10 +1,14 @@
 // VesnaHome frontend - Supabase Auth + Properties + Storage
+// IMPORTANT: paste your Supabase Publishable key (sb_publishable_...) below.
 // Never put a Supabase secret/service_role key in this file.
 
 const SUPABASE_URL = 'https://flhlxxlxncbuvtsfjrnv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_qQ1sZKEic6q93X6yGoh6Vg_Uyfj-633';
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
 
 let properties = [];
 let currentUser = null;
@@ -32,15 +36,6 @@ function fmt(value, listing = 'Sale') {
   if (n >= 10000000) return '₹' + (n / 10000000).toFixed(n % 10000000 ? 1 : 0) + ' Cr';
   if (n >= 100000) return '₹' + (n / 100000).toFixed(n % 100000 ? 1 : 0) + ' Lac';
   return '₹' + n.toLocaleString('en-IN');
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
 }
 
 function normalizeProperty(p) {
@@ -71,27 +66,17 @@ function normalizeProperty(p) {
   };
 }
 
+
 async function loadPropertyImages(property) {
   if (!property.owner_id || !property.id) return [];
-
   const folder = `${property.owner_id}/${property.id}`;
   const { data: files, error } = await supabaseClient.storage
-    .from('property-images')
-    .list(folder, { limit: 100, sortBy: { column: 'created_at', order: 'asc' } });
-
-  if (error) {
-    console.warn(`Unable to load photos for property ${property.id}:`, error.message);
-    return [];
-  }
-
-  return (files || [])
-    .filter(file => file.name && !file.name.startsWith('.'))
-    .map(file => {
-      const path = `${folder}/${file.name}`;
-      const { data } = supabaseClient.storage.from('property-images').getPublicUrl(path);
-      return data.publicUrl;
-    })
-    .filter(Boolean);
+    .from('property-images').list(folder, { limit: 100, sortBy: { column: 'created_at', order: 'asc' } });
+  if (error) { console.warn(`Unable to load photos for property ${property.id}:`, error.message); return []; }
+  return (files || []).filter(f => f.name && !f.name.startsWith('.')).map(f => {
+    const { data } = supabaseClient.storage.from('property-images').getPublicUrl(`${folder}/${f.name}`);
+    return data.publicUrl;
+  }).filter(Boolean);
 }
 
 async function loadProperties() {
@@ -110,18 +95,16 @@ async function loadProperties() {
     return;
   }
 
-  // Media loading must never stop the property itself from displaying.
-  const rowsWithImages = await Promise.all((data || []).map(async row => {
+  const rows = await Promise.all((data || []).map(async row => {
     try {
       const images = await loadPropertyImages(row);
       return { ...row, images, imageUrl: images[0] || '' };
-    } catch (err) {
-      console.warn(`Photo loading skipped for property ${row.id}:`, err);
+    } catch (error) {
+      console.warn(`Photo loading skipped for property ${row.id}:`, error);
       return { ...row, images: [], imageUrl: '' };
     }
   }));
-
-  properties = rowsWithImages.map(normalizeProperty);
+  properties = rows.map(normalizeProperty);
   render();
 }
 
@@ -131,56 +114,28 @@ function getYoutubeVideoId(url) {
     const u = new URL(url.trim());
     const host = u.hostname.replace(/^www\./, '').toLowerCase();
     let id = '';
-
-    if (host === 'youtu.be') {
-      id = u.pathname.split('/').filter(Boolean)[0] || '';
-    } else if (host.endsWith('youtube.com')) {
+    if (host === 'youtu.be') id = u.pathname.split('/').filter(Boolean)[0] || '';
+    else if (host.endsWith('youtube.com')) {
       if (u.pathname === '/watch') id = u.searchParams.get('v') || '';
       else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] || '';
       else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
       else if (u.pathname.startsWith('/live/')) id = u.pathname.split('/')[2] || '';
     }
-
     return /^[a-zA-Z0-9_-]{6,20}$/.test(id) ? id : '';
-  } catch {
-    return '';
-  }
+  } catch { return ''; }
 }
 
 function cardMedia(p) {
   const videoId = getYoutubeVideoId(p.youtubeUrl);
-
-  // VesnaHome priority: video first, photo second, placeholder last.
   if (videoId) {
-    return `
-      <div class="card-video">
-        <iframe
-          src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&playsinline=1"
-          title="${escapeHtml(p.title)} property video"
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen>
-        </iframe>
-        <span class="tag">FOR ${p.listing.toUpperCase()}</span>
-      </div>`;
-  }
-
-  if (p.imageUrl) {
-    return `
-      <div class="photo" style="background-image:url('${escapeHtml(p.imageUrl)}')">
-        <span class="tag">FOR ${p.listing.toUpperCase()}</span>
-        <button class="heart" onclick="favorite(event)" aria-label="Favorite">♡</button>
-        <span class="count">▧ ${p.images.length} photo${p.images.length === 1 ? '' : 's'}</span>
-      </div>`;
-  }
-
-  return `
-    <div class="photo no-photo">
-      <span class="tag">FOR ${p.listing.toUpperCase()}</span>
-      <button class="heart" onclick="favorite(event)" aria-label="Favorite">♡</button>
-      <span class="count">No media</span>
+    const thumbnail = `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
+    return `<div class="listing-media video-preview" onclick="viewProperty(${p.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();viewProperty(${p.id});}" role="button" tabindex="0" aria-label="Open property video tour">
+      <img src="${thumbnail}" alt="${escapeHtml(p.title)} video preview" loading="lazy">
+      <span class="media-badge">VIDEO TOUR</span><span class="video-play" aria-hidden="true">▶</span><span class="media-open-label">Play on VesnaHome</span>
     </div>`;
+  }
+  if (p.imageUrl) return `<div class="listing-media property-photo" onclick="viewProperty(${p.id})" role="button" tabindex="0"><img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.title)}" loading="lazy"><span class="media-badge">${p.images.length} PHOTO${p.images.length===1?'':'S'}</span></div>`;
+  return `<div class="listing-media no-media"><span>No property media available</span></div>`;
 }
 
 function render(list = properties) {
@@ -188,29 +143,41 @@ function render(list = properties) {
   const resultCount = $('resultCount');
   if (!grid) return;
   if (resultCount) resultCount.textContent = `${list.length} properties found`;
+  if (!list.length) { grid.innerHTML = '<p>No active properties found.</p>'; return; }
 
-  if (!list.length) {
-    grid.innerHTML = '<p>No active properties found.</p>';
-    return;
-  }
-
-  grid.innerHTML = list.map(p => `
-    <article class="property">
+  grid.innerHTML = list.map(p => {
+    const digits = String(p.phone || '').replace(/[^0-9]/g, '');
+    const description = p.description && p.description.length > 210 ? p.description.substring(0, 210) + '...' : p.description;
+    return `<article class="property listing-row">
       ${cardMedia(p)}
-      <div class="property-body">
-        <span class="location">⌖ ${escapeHtml(p.location)}</span>
-        <h3>${escapeHtml(p.title)}</h3>
-        <div class="features">
-          ${p.bedrooms !== '' ? `<span>${p.bedrooms} BHK</span>` : ''}
-          ${p.area !== '' ? `<span>${p.area} ${escapeHtml(p.areaUnit)}</span>` : ''}
+      <div class="listing-content">
+        <span class="listing-purpose">FOR ${p.listing.toUpperCase()}</span>
+        <h3>${escapeHtml(p.title)}</h3><span class="listing-location">⌖ ${escapeHtml(p.location)}</span>
+        <div class="listing-specs">
+          ${p.area !== '' ? `<div class="listing-spec"><small>AREA</small><strong>${p.area} ${escapeHtml(p.areaUnit)}</strong></div>` : ''}
+          ${p.bedrooms !== '' ? `<div class="listing-spec"><small>CONFIGURATION</small><strong>${p.bedrooms} BHK</strong></div>` : ''}
+          ${p.bathrooms !== '' ? `<div class="listing-spec"><small>BATHROOM</small><strong>${p.bathrooms}</strong></div>` : ''}
+          ${p.propertyType ? `<div class="listing-spec"><small>PROPERTY TYPE</small><strong>${escapeHtml(p.propertyType)}</strong></div>` : ''}
         </div>
-        <div class="price-row">
-          <span class="price">${fmt(p.price, p.listing)}</span>
-          <button class="view" onclick="viewProperty(${p.id})">View details</button>
-        </div>
+        ${description ? `<p class="listing-description">${escapeHtml(description)}</p>` : ''}
+        <button class="listing-details" onclick="viewProperty(${p.id})">View full details</button>
       </div>
-    </article>
-  `).join('');
+      <aside class="listing-contact">
+        <div class="listing-price">${fmt(p.price, p.listing)}</div>
+        ${digits ? `<a class="listing-contact-button" href="tel:${digits}">Call Owner</a><a class="listing-whatsapp" href="https://wa.me/${digits}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+        ${p.ownerName ? `<div class="listing-owner">Owner: <strong>${escapeHtml(p.ownerName)}</strong></div>` : ''}
+      </aside>
+    </article>`;
+  }).join('');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 function applyFilters() {
@@ -218,7 +185,9 @@ function applyFilters() {
   const type = $('type')?.value || '';
   const budget = Number($('budget')?.value || 0);
   const bhk = $('bhk')?.value || '';
-  const wantedListing = activeListing === 'All' ? (purpose === 'Rent' ? 'Rent' : 'Sale') : activeListing;
+  const wantedListing = activeListing === 'All'
+    ? (purpose === 'Rent' ? 'Rent' : 'Sale')
+    : activeListing;
 
   const filtered = properties.filter(p =>
     (!loc || p.location === loc || p.city === loc || p.locality === loc) &&
@@ -250,26 +219,7 @@ function favorite(event) {
 function youtubeEmbed(url) {
   const id = getYoutubeVideoId(url);
   if (!id) return '';
-  return `
-    <section class="property-video-section">
-      <h3>Property video tour</h3>
-      <iframe
-        class="video"
-        src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0&playsinline=1"
-        title="Property video walkthrough"
-        loading="lazy"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        referrerpolicy="strict-origin-when-cross-origin"
-        allowfullscreen>
-      </iframe>
-    </section>`;
-}
-
-function selectPropertyImage(button, url) {
-  const main = $('detailMainImage');
-  if (main) main.src = url;
-  document.querySelectorAll('.detail-thumb').forEach(item => item.classList.remove('active'));
-  button?.classList.add('active');
+  return `<section class="property-video-section"><h3>Property video tour</h3><iframe class="video" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0&playsinline=1" title="Property video walkthrough" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></section>`;
 }
 
 function viewProperty(id) {
@@ -279,14 +229,6 @@ function viewProperty(id) {
   const digits = String(p.phone || '').replace(/[^0-9]/g, '');
   $('detailsContent').innerHTML = `
     <div class="detail-top">
-      ${p.images.length ? `
-        <div class="detail-gallery">
-          <img class="detail-img" id="detailMainImage" src="${escapeHtml(p.images[0])}" alt="${escapeHtml(p.title)}">
-          ${p.images.length > 1 ? `<div class="detail-thumbnails">${p.images.map((url, index) => `
-            <button type="button" class="detail-thumb${index === 0 ? ' active' : ''}" onclick="selectPropertyImage(this, '${escapeHtml(url)}')">
-              <img src="${escapeHtml(url)}" alt="Property photo ${index + 1}">
-            </button>`).join('')}</div>` : ''}
-        </div>` : '<div class="detail-no-photo">No property photo available</div>'}
       <div class="detail-info">
         <span class="eyebrow">FOR ${p.listing.toUpperCase()}</span>
         <h2>${escapeHtml(p.title)}</h2>
@@ -308,6 +250,7 @@ function viewProperty(id) {
 }
 
 // ---------- Authentication ----------
+
 function openAuth() {
   $('authMessage').textContent = '';
   showLogin();
@@ -347,7 +290,10 @@ async function updateAuthUI() {
 
 async function logout() {
   const { error } = await supabaseClient.auth.signOut();
-  if (error) return toast(error.message);
+  if (error) {
+    toast(error.message);
+    return;
+  }
   currentUser = null;
   await updateAuthUI();
   toast('Logged out successfully.');
@@ -361,7 +307,10 @@ $('loginForm')?.addEventListener('submit', async event => {
   $('authMessage').textContent = 'Signing in...';
 
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) return $('authMessage').textContent = error.message;
+  if (error) {
+    $('authMessage').textContent = error.message;
+    return;
+  }
 
   $('authMessage').textContent = '';
   closeModal('authModal');
@@ -383,13 +332,19 @@ $('signupForm')?.addEventListener('submit', async event => {
   }
 
   $('authMessage').textContent = 'Creating account...';
+
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: 'https://vesnahome.in' }
+    options: {
+      emailRedirectTo: 'https://vesnahome.in'
+    }
   });
 
-  if (error) return $('authMessage').textContent = error.message;
+  if (error) {
+    $('authMessage').textContent = error.message;
+    return;
+  }
 
   event.currentTarget.reset();
   if (data.session) {
@@ -401,9 +356,12 @@ $('signupForm')?.addEventListener('submit', async event => {
   }
 });
 
-supabaseClient.auth.onAuthStateChange(() => updateAuthUI());
+supabaseClient.auth.onAuthStateChange(() => {
+  updateAuthUI();
+});
 
 // ---------- Post property ----------
+
 async function openPost() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   currentUser = session?.user || null;
@@ -418,12 +376,19 @@ async function openPost() {
 async function uploadPropertyPhotos(userId, propertyId, files) {
   const uploaded = [];
   for (const file of files) {
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error(`Unsupported image type: ${file.name}`);
-    if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} is larger than 10 MB.`);
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      throw new Error(`Unsupported image type: ${file.name}`);
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error(`${file.name} is larger than 10 MB.`);
+    }
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `${userId}/${propertyId}/${Date.now()}-${safeName}`;
-    const { error } = await supabaseClient.storage.from('property-images').upload(path, file, { upsert: false });
+    const { error } = await supabaseClient.storage
+      .from('property-images')
+      .upload(path, file, { upsert: false });
+
     if (error) throw error;
     uploaded.push(path);
   }
@@ -467,11 +432,18 @@ $('postForm')?.addEventListener('submit', async event => {
       featured: false
     };
 
-    const { data: inserted, error: insertError } = await supabaseClient.from('properties').insert(row).select('id').single();
+    const { data: inserted, error: insertError } = await supabaseClient
+      .from('properties')
+      .insert(row)
+      .select('id')
+      .single();
+
     if (insertError) throw insertError;
 
     const files = Array.from($('propertyPhotos')?.files || []);
-    if (files.length) await uploadPropertyPhotos(user.id, inserted.id, files);
+    if (files.length) {
+      await uploadPropertyPhotos(user.id, inserted.id, files);
+    }
 
     formEl.reset();
     closeModal('postModal');
@@ -486,6 +458,7 @@ $('postForm')?.addEventListener('submit', async event => {
 });
 
 // ---------- Page controls ----------
+
 document.querySelectorAll('.purpose button').forEach(button => {
   button.addEventListener('click', () => {
     document.querySelectorAll('.purpose button').forEach(x => x.classList.remove('active'));
@@ -499,7 +472,10 @@ document.querySelectorAll('.filter-pills button').forEach(button => {
     document.querySelectorAll('.filter-pills button').forEach(x => x.classList.remove('active'));
     button.classList.add('active');
     activeListing = button.dataset.filter;
-    render(activeListing === 'All' ? properties : properties.filter(p => p.listing === activeListing));
+    const list = activeListing === 'All'
+      ? properties
+      : properties.filter(p => p.listing === activeListing);
+    render(list);
   });
 });
 
@@ -508,13 +484,8 @@ window.addEventListener('click', event => {
 });
 
 async function init() {
-  try {
-    await updateAuthUI();
-    await loadProperties();
-  } catch (error) {
-    console.error('VesnaHome initialization error:', error);
-    toast('Unable to load VesnaHome data.');
-  }
+  await updateAuthUI();
+  await loadProperties();
 }
 
 init();
