@@ -3,11 +3,18 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VesnaHome | Buy, Sell & Rent Property</title>
+<link rel="icon" type="image/png" href="./Vesnahome_Logo.png">
 <link rel="stylesheet" href="styles.css">
+<style>
+.brand-logo{display:flex;align-items:center;text-decoration:none;line-height:0}.brand-logo img{display:block;width:auto;height:58px;max-width:230px;object-fit:contain}.footer-logo img{height:74px;max-width:270px}.logo-fallback{display:none;font:800 25px Manrope;color:#17211b}.logo-fallback span{color:#176b52}header{min-height:76px;height:auto}footer .brand-logo{flex-shrink:0}@media(max-width:600px){.brand-logo img{height:46px;max-width:170px}.footer-logo img{height:60px;max-width:220px}}
+</style>
 </head>
 <body>
 <header>
-  <a class="brand" href="#">Vesna<span>Home</span></a>
+  <a class="brand-logo" href="#" aria-label="VesnaHome home">
+    <img src="./Vesnahome_Logo.png" alt="VesnaHome" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'">
+    <span class="logo-fallback">Vesna<span>Home</span></span>
+  </a>
   <nav><a href="#properties">Buy</a><a href="#properties">Rent</a><a href="#how">How it works</a><a href="#contact">Contact</a></nav>
   <button class="post-btn" onclick="openPost()">+ Post Property Free</button>
 </header>
@@ -36,8 +43,7 @@
   <div id="propertyGrid" class="grid"></div>
 </main>
 <section id="how" class="owner-cta"><div><div class="eyebrow">FOR OWNERS & AGENTS</div><h2>Have a property to sell or rent?</h2><p>Submit the details without creating an account. Every listing can be reviewed before it appears publicly.</p></div><button onclick="openPost()">Post Property Free →</button></section>
-<footer id="contact"><a class="brand light" href="#">Vesna<span>Home</span></a><p>A simple marketplace for buying, selling and renting property.</p><div>© 2026 VesnaHome · Static website prototype</div></footer>
-
+<footer id="contact"><a class="brand-logo footer-logo" href="#" aria-label="VesnaHome home"><img src="./Vesnahome_Logo.png" alt="VesnaHome"><span class="logo-fallback">Vesna<span>Home</span></span></a><p>A simple marketplace for buying, selling and renting property.</p><div>© 2026 VesnaHome · vesnahome.in</div></footer>
 <div class="modal" id="detailsModal"><div class="modal-card wide"><button class="close" onclick="closeModal('detailsModal')">×</button><div id="detailsContent"></div></div></div>
 <div class="modal" id="postModal"><div class="modal-card"><button class="close" onclick="closeModal('postModal')">×</button><h2>Post your property</h2><p class="muted">No login required. Submission will be saved locally in this prototype.</p><form id="postForm">
 <div class="form-grid"><label>Listing purpose<select name="listingType" required><option>Sale</option><option>Rent</option></select></label><label>Property type<select name="propertyType"><option>Flat</option><option>Independent House</option><option>Builder Floor</option></select></label><label class="full">Property title<input name="title" required placeholder="e.g. 2 BHK flat near metro"></label><label>Location<input name="location" required></label><label>Price (₹)<input name="price" type="number" required></label><label>BHK<input name="bhk" type="number" min="1" max="10" required></label><label>Area (sqft)<input name="area" type="number" required></label><label>Owner name<input name="owner" required></label><label>Phone<input name="phone" required></label><label class="full">YouTube video URL<input name="youtube" placeholder="Optional"></label><label class="full">Description<textarea name="description" rows="4"></textarea></label><label class="full upload">Property photos<input type="file" accept="image/*" multiple><small>Prototype only: selected files are not uploaded.</small></label></div><button class="submit">Submit Property</button></form></div></div>
