@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VesnaHome | Buy, Sell & Rent Property</title>
 <link rel="icon" type="image/png" href="./Vesnahome_Logo.png">
 <link rel="stylesheet" href="styles.css">
 <style>
-.brand-logo{display:flex;align-items:center;text-decoration:none;line-height:0}.brand-logo img{display:block;width:auto;height:58px;max-width:230px;object-fit:contain}.footer-logo img{height:74px;max-width:270px}.logo-fallback{display:none;font:800 25px Manrope;color:#17211b}.logo-fallback span{color:#176b52}header{min-height:76px;height:auto}footer .brand-logo{flex-shrink:0}@media(max-width:600px){.brand-logo img{height:46px;max-width:170px}.footer-logo img{height:60px;max-width:220px}}
+.brand-logo{display:flex;align-items:center;text-decoration:none;line-height:0}.brand-logo img{display:block;width:auto;height:58px;max-width:230px;object-fit:contain}.footer-logo img{height:74px;max-width:270px}.logo-fallback{display:none;font:800 25px Manrope;color:#17211b}.logo-fallback span{color:#176b52}header{min-height:76px;height:auto}footer .brand-logo{flex-shrink:0}.header-actions{display:flex;align-items:center;gap:10px}.auth-btn{border:1px solid #176b52;background:#fff;color:#176b52;padding:12px 18px;border-radius:12px;font-weight:700;cursor:pointer}.auth-tabs{display:flex;gap:8px;margin:18px 0}.auth-tabs button{flex:1;padding:11px;border:1px solid #ddd;background:#f7f7f3;border-radius:10px;cursor:pointer;font-weight:700}.auth-tabs button.active{background:#176b52;color:#fff;border-color:#176b52}.auth-form{display:flex;flex-direction:column;gap:14px}.auth-form label{display:flex;flex-direction:column;gap:6px;font-weight:600}.auth-form input{padding:12px;border:1px solid #d7d7d2;border-radius:8px;font:inherit}.auth-message{font-size:14px;margin-top:12px}.user-menu{display:none;align-items:center;gap:10px}.user-email{font-size:13px;color:#526057;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media(max-width:900px){.header-actions{gap:6px}.auth-btn{padding:10px 12px}.user-email{display:none}}@media(max-width:600px){.brand-logo img{height:46px;max-width:170px}.footer-logo img{height:60px;max-width:220px}}
 </style>
 </head>
 <body>
@@ -16,7 +17,11 @@
     <span class="logo-fallback">Vesna<span>Home</span></span>
   </a>
   <nav><a href="#properties">Buy</a><a href="#properties">Rent</a><a href="#how">How it works</a><a href="#contact">Contact</a></nav>
-  <button class="post-btn" onclick="openPost()">+ Post Property Free</button>
+  <div class="header-actions">
+    <div id="guestActions"><button class="auth-btn" onclick="openAuth()">Login / Sign Up</button></div>
+    <div id="userActions" class="user-menu"><span id="userEmail" class="user-email"></span><button class="auth-btn" onclick="logout()">Logout</button></div>
+    <button class="post-btn" onclick="openPost()">+ Post Property Free</button>
+  </div>
 </header>
 <section class="hero">
   <div class="hero-inner">
@@ -42,11 +47,17 @@
   <div class="advanced"><select id="bhk"><option value="">Any BHK</option><option value="1">1 BHK</option><option value="2">2 BHK</option><option value="3">3 BHK</option></select><select id="status"><option value="">Any status</option><option>Ready to Move</option><option>Under Construction</option></select><button onclick="resetFilters()">Reset filters</button><span id="resultCount"></span></div>
   <div id="propertyGrid" class="grid"></div>
 </main>
-<section id="how" class="owner-cta"><div><div class="eyebrow">FOR OWNERS & AGENTS</div><h2>Have a property to sell or rent?</h2><p>Submit the details without creating an account. Every listing can be reviewed before it appears publicly.</p></div><button onclick="openPost()">Post Property Free →</button></section>
+<section id="how" class="owner-cta"><div><div class="eyebrow">FOR OWNERS & AGENTS</div><h2>Have a property to sell or rent?</h2><p>Create a free owner account and submit your property. Every listing is reviewed before it appears publicly.</p></div><button onclick="openPost()">Post Property Free →</button></section>
 <footer id="contact"><a class="brand-logo footer-logo" href="#" aria-label="VesnaHome home"><img src="./Vesnahome_Logo.png" alt="VesnaHome"><span class="logo-fallback">Vesna<span>Home</span></span></a><p>A simple marketplace for buying, selling and renting property.</p><div>© 2026 VesnaHome · vesnahome.in</div></footer>
+
 <div class="modal" id="detailsModal"><div class="modal-card wide"><button class="close" onclick="closeModal('detailsModal')">×</button><div id="detailsContent"></div></div></div>
-<div class="modal" id="postModal"><div class="modal-card"><button class="close" onclick="closeModal('postModal')">×</button><h2>Post your property</h2><p class="muted">No login required. Submission will be saved locally in this prototype.</p><form id="postForm">
-<div class="form-grid"><label>Listing purpose<select name="listingType" required><option>Sale</option><option>Rent</option></select></label><label>Property type<select name="propertyType"><option>Flat</option><option>Independent House</option><option>Builder Floor</option></select></label><label class="full">Property title<input name="title" required placeholder="e.g. 2 BHK flat near metro"></label><label>Location<input name="location" required></label><label>Price (₹)<input name="price" type="number" required></label><label>BHK<input name="bhk" type="number" min="1" max="10" required></label><label>Area (sqft)<input name="area" type="number" required></label><label>Owner name<input name="owner" required></label><label>Phone<input name="phone" required></label><label class="full">YouTube video URL<input name="youtube" placeholder="Optional"></label><label class="full">Description<textarea name="description" rows="4"></textarea></label><label class="full upload">Property photos<input type="file" accept="image/*" multiple><small>Prototype only: selected files are not uploaded.</small></label></div><button class="submit">Submit Property</button></form></div></div>
+
+<div class="modal" id="authModal"><div class="modal-card"><button class="close" onclick="closeModal('authModal')">×</button><h2>Welcome to VesnaHome</h2><p class="muted">Sign in to post and manage your properties.</p><div class="auth-tabs"><button id="loginTab" class="active" type="button" onclick="showLogin()">Login</button><button id="signupTab" type="button" onclick="showSignup()">Sign Up</button></div><form id="loginForm" class="auth-form"><label>Email<input type="email" name="email" autocomplete="email" required></label><label>Password<input type="password" name="password" autocomplete="current-password" minlength="8" required></label><button class="submit" type="submit">Login</button></form><form id="signupForm" class="auth-form" style="display:none"><label>Email<input type="email" name="email" autocomplete="email" required></label><label>Password<input type="password" name="password" autocomplete="new-password" minlength="8" required></label><label>Confirm password<input type="password" name="confirmPassword" autocomplete="new-password" minlength="8" required></label><button class="submit" type="submit">Create Account</button></form><p id="authMessage" class="auth-message"></p></div></div>
+
+<div class="modal" id="postModal"><div class="modal-card"><button class="close" onclick="closeModal('postModal')">×</button><h2>Post your property</h2><p class="muted">Your property will be submitted for review before becoming publicly visible.</p><form id="postForm"><div class="form-grid"><label>Listing purpose<select name="listingType" required><option>Sale</option><option>Rent</option></select></label><label>Property type<select name="propertyType" required><option>Flat</option><option>Independent House</option><option>Builder Floor</option></select></label><label class="full">Property title<input name="title" required placeholder="e.g. 2 BHK flat near metro"></label><label>Location<input name="location" required></label><label>Price (₹)<input name="price" type="number" min="0" required></label><label>BHK<input name="bhk" type="number" min="1" max="10" required></label><label>Area (sqft)<input name="area" type="number" min="1" required></label><label>Owner name<input name="owner" required></label><label>Phone<input name="phone" type="tel" required></label><label class="full">YouTube video URL<input name="youtube" type="url" placeholder="Optional"></label><label class="full">Description<textarea name="description" rows="4"></textarea></label><label class="full upload">Property photos<input id="propertyPhotos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple><small>JPEG, PNG or WebP. Maximum 10 MB per image.</small></label></div><button class="submit" type="submit">Submit Property</button></form></div></div>
+
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
-</body></html>
+</body>
+</html>
