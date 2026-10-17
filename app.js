@@ -1,14 +1,10 @@
 // VesnaHome frontend - Supabase Auth + Properties + Storage
-// IMPORTANT: paste your Supabase Publishable key (sb_publishable_...) below.
 // Never put a Supabase secret/service_role key in this file.
 
 const SUPABASE_URL = 'https://flhlxxlxncbuvtsfjrnv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_qQ1sZKEic6q93X6yGoh6Vg_Uyfj-633';
 
-const supabaseClient = supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY
-);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 let properties = [];
 let currentUser = null;
@@ -36,6 +32,15 @@ function fmt(value, listing = 'Sale') {
   if (n >= 10000000) return '₹' + (n / 10000000).toFixed(n % 10000000 ? 1 : 0) + ' Cr';
   if (n >= 100000) return '₹' + (n / 100000).toFixed(n % 100000 ? 1 : 0) + ' Lac';
   return '₹' + n.toLocaleString('en-IN');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 function normalizeProperty(p) {
@@ -72,10 +77,7 @@ async function loadPropertyImages(property) {
   const folder = `${property.owner_id}/${property.id}`;
   const { data: files, error } = await supabaseClient.storage
     .from('property-images')
-    .list(folder, {
-      limit: 100,
-      sortBy: { column: 'created_at', order: 'asc' }
-    });
+    .list(folder, { limit: 100, sortBy: { column: 'created_at', order: 'asc' } });
 
   if (error) {
     console.warn(`Unable to load photos for property ${property.id}:`, error.message);
@@ -86,9 +88,7 @@ async function loadPropertyImages(property) {
     .filter(file => file.name && !file.name.startsWith('.'))
     .map(file => {
       const path = `${folder}/${file.name}`;
-      const { data } = supabaseClient.storage
-        .from('property-images')
-        .getPublicUrl(path);
+      const { data } = supabaseClient.storage.from('property-images').getPublicUrl(path);
       return data.publicUrl;
     })
     .filter(Boolean);
@@ -110,13 +110,77 @@ async function loadProperties() {
     return;
   }
 
+  // Media loading must never stop the property itself from displaying.
   const rowsWithImages = await Promise.all((data || []).map(async row => {
-    const images = await loadPropertyImages(row);
-    return { ...row, images, imageUrl: images[0] || '' };
+    try {
+      const images = await loadPropertyImages(row);
+      return { ...row, images, imageUrl: images[0] || '' };
+    } catch (err) {
+      console.warn(`Photo loading skipped for property ${row.id}:`, err);
+      return { ...row, images: [], imageUrl: '' };
+    }
   }));
 
   properties = rowsWithImages.map(normalizeProperty);
   render();
+}
+
+function getYoutubeVideoId(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(url.trim());
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+    let id = '';
+
+    if (host === 'youtu.be') {
+      id = u.pathname.split('/').filter(Boolean)[0] || '';
+    } else if (host.endsWith('youtube.com')) {
+      if (u.pathname === '/watch') id = u.searchParams.get('v') || '';
+      else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] || '';
+      else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+      else if (u.pathname.startsWith('/live/')) id = u.pathname.split('/')[2] || '';
+    }
+
+    return /^[a-zA-Z0-9_-]{6,20}$/.test(id) ? id : '';
+  } catch {
+    return '';
+  }
+}
+
+function cardMedia(p) {
+  const videoId = getYoutubeVideoId(p.youtubeUrl);
+
+  // VesnaHome priority: video first, photo second, placeholder last.
+  if (videoId) {
+    return `
+      <div class="card-video">
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&playsinline=1"
+          title="${escapeHtml(p.title)} property video"
+          loading="lazy"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen>
+        </iframe>
+        <span class="tag">FOR ${p.listing.toUpperCase()}</span>
+      </div>`;
+  }
+
+  if (p.imageUrl) {
+    return `
+      <div class="photo" style="background-image:url('${escapeHtml(p.imageUrl)}')">
+        <span class="tag">FOR ${p.listing.toUpperCase()}</span>
+        <button class="heart" onclick="favorite(event)" aria-label="Favorite">♡</button>
+        <span class="count">▧ ${p.images.length} photo${p.images.length === 1 ? '' : 's'}</span>
+      </div>`;
+  }
+
+  return `
+    <div class="photo no-photo">
+      <span class="tag">FOR ${p.listing.toUpperCase()}</span>
+      <button class="heart" onclick="favorite(event)" aria-label="Favorite">♡</button>
+      <span class="count">No media</span>
+    </div>`;
 }
 
 function render(list = properties) {
@@ -132,11 +196,7 @@ function render(list = properties) {
 
   grid.innerHTML = list.map(p => `
     <article class="property">
-      <div class="photo${p.imageUrl ? '' : ' no-photo'}" ${p.imageUrl ? `style="background-image:url('${escapeHtml(p.imageUrl)}')"` : ''}>
-        <span class="tag">FOR ${p.listing.toUpperCase()}</span>
-        <button class="heart" onclick="favorite(event)" aria-label="Favorite">♡</button>
-        ${p.images.length ? `<span class="count">▧ ${p.images.length} photo${p.images.length === 1 ? '' : 's'}</span>` : '<span class="count">No photo</span>'}
-      </div>
+      ${cardMedia(p)}
       <div class="property-body">
         <span class="location">⌖ ${escapeHtml(p.location)}</span>
         <h3>${escapeHtml(p.title)}</h3>
@@ -153,23 +213,12 @@ function render(list = properties) {
   `).join('');
 }
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
 function applyFilters() {
   const loc = $('location')?.value || '';
   const type = $('type')?.value || '';
   const budget = Number($('budget')?.value || 0);
   const bhk = $('bhk')?.value || '';
-  const wantedListing = activeListing === 'All'
-    ? (purpose === 'Rent' ? 'Rent' : 'Sale')
-    : activeListing;
+  const wantedListing = activeListing === 'All' ? (purpose === 'Rent' ? 'Rent' : 'Sale') : activeListing;
 
   const filtered = properties.filter(p =>
     (!loc || p.location === loc || p.city === loc || p.locality === loc) &&
@@ -198,28 +247,6 @@ function favorite(event) {
   event.target.style.color = '#e8673d';
 }
 
-function getYoutubeVideoId(url) {
-  if (!url) return '';
-  try {
-    const u = new URL(url.trim());
-    const host = u.hostname.replace(/^www\./, '').toLowerCase();
-    let id = '';
-
-    if (host === 'youtu.be') {
-      id = u.pathname.split('/').filter(Boolean)[0] || '';
-    } else if (host.endsWith('youtube.com')) {
-      if (u.pathname === '/watch') id = u.searchParams.get('v') || '';
-      else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] || '';
-      else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
-      else if (u.pathname.startsWith('/live/')) id = u.pathname.split('/')[2] || '';
-    }
-
-    return /^[a-zA-Z0-9_-]{6,20}$/.test(id) ? id : '';
-  } catch {
-    return '';
-  }
-}
-
 function youtubeEmbed(url) {
   const id = getYoutubeVideoId(url);
   if (!id) return '';
@@ -228,15 +255,14 @@ function youtubeEmbed(url) {
       <h3>Property video tour</h3>
       <iframe
         class="video"
-        src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}"
+        src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0&playsinline=1"
         title="Property video walkthrough"
         loading="lazy"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         referrerpolicy="strict-origin-when-cross-origin"
         allowfullscreen>
       </iframe>
-    </section>
-  `;
+    </section>`;
 }
 
 function selectPropertyImage(button, url) {
@@ -282,7 +308,6 @@ function viewProperty(id) {
 }
 
 // ---------- Authentication ----------
-
 function openAuth() {
   $('authMessage').textContent = '';
   showLogin();
@@ -322,10 +347,7 @@ async function updateAuthUI() {
 
 async function logout() {
   const { error } = await supabaseClient.auth.signOut();
-  if (error) {
-    toast(error.message);
-    return;
-  }
+  if (error) return toast(error.message);
   currentUser = null;
   await updateAuthUI();
   toast('Logged out successfully.');
@@ -339,10 +361,7 @@ $('loginForm')?.addEventListener('submit', async event => {
   $('authMessage').textContent = 'Signing in...';
 
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) {
-    $('authMessage').textContent = error.message;
-    return;
-  }
+  if (error) return $('authMessage').textContent = error.message;
 
   $('authMessage').textContent = '';
   closeModal('authModal');
@@ -364,19 +383,13 @@ $('signupForm')?.addEventListener('submit', async event => {
   }
 
   $('authMessage').textContent = 'Creating account...';
-
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
-    options: {
-      emailRedirectTo: 'https://vesnahome.in'
-    }
+    options: { emailRedirectTo: 'https://vesnahome.in' }
   });
 
-  if (error) {
-    $('authMessage').textContent = error.message;
-    return;
-  }
+  if (error) return $('authMessage').textContent = error.message;
 
   event.currentTarget.reset();
   if (data.session) {
@@ -388,12 +401,9 @@ $('signupForm')?.addEventListener('submit', async event => {
   }
 });
 
-supabaseClient.auth.onAuthStateChange(() => {
-  updateAuthUI();
-});
+supabaseClient.auth.onAuthStateChange(() => updateAuthUI());
 
 // ---------- Post property ----------
-
 async function openPost() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   currentUser = session?.user || null;
@@ -408,19 +418,12 @@ async function openPost() {
 async function uploadPropertyPhotos(userId, propertyId, files) {
   const uploaded = [];
   for (const file of files) {
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      throw new Error(`Unsupported image type: ${file.name}`);
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error(`${file.name} is larger than 10 MB.`);
-    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error(`Unsupported image type: ${file.name}`);
+    if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} is larger than 10 MB.`);
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `${userId}/${propertyId}/${Date.now()}-${safeName}`;
-    const { error } = await supabaseClient.storage
-      .from('property-images')
-      .upload(path, file, { upsert: false });
-
+    const { error } = await supabaseClient.storage.from('property-images').upload(path, file, { upsert: false });
     if (error) throw error;
     uploaded.push(path);
   }
@@ -464,18 +467,11 @@ $('postForm')?.addEventListener('submit', async event => {
       featured: false
     };
 
-    const { data: inserted, error: insertError } = await supabaseClient
-      .from('properties')
-      .insert(row)
-      .select('id')
-      .single();
-
+    const { data: inserted, error: insertError } = await supabaseClient.from('properties').insert(row).select('id').single();
     if (insertError) throw insertError;
 
     const files = Array.from($('propertyPhotos')?.files || []);
-    if (files.length) {
-      await uploadPropertyPhotos(user.id, inserted.id, files);
-    }
+    if (files.length) await uploadPropertyPhotos(user.id, inserted.id, files);
 
     formEl.reset();
     closeModal('postModal');
@@ -490,7 +486,6 @@ $('postForm')?.addEventListener('submit', async event => {
 });
 
 // ---------- Page controls ----------
-
 document.querySelectorAll('.purpose button').forEach(button => {
   button.addEventListener('click', () => {
     document.querySelectorAll('.purpose button').forEach(x => x.classList.remove('active'));
@@ -504,10 +499,7 @@ document.querySelectorAll('.filter-pills button').forEach(button => {
     document.querySelectorAll('.filter-pills button').forEach(x => x.classList.remove('active'));
     button.classList.add('active');
     activeListing = button.dataset.filter;
-    const list = activeListing === 'All'
-      ? properties
-      : properties.filter(p => p.listing === activeListing);
-    render(list);
+    render(activeListing === 'All' ? properties : properties.filter(p => p.listing === activeListing));
   });
 });
 
