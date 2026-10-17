@@ -6,3 +6,68 @@
 /* Property media */
 .photo.no-photo{background:linear-gradient(145deg,#f5f6f1,#e8ede5)}
 .detail-gallery{min-width:0}.detail-thumbnails{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px}.detail-thumb{width:74px;height:58px;padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;background:#fff;flex:0 0 auto}.detail-thumb.active{border-color:var(--green)}.detail-thumb img{width:100%;height:100%;object-fit:cover}.detail-no-photo{min-height:280px;border-radius:13px;background:linear-gradient(145deg,#f5f6f1,#e8ede5);display:grid;place-items:center;color:#718078}.property-video-section{margin-top:26px}.property-video-section h3{font:700 22px Manrope;margin:0 0 12px}
+
+/* ===== VesnaHome larger property card video ===== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 26px;
+}
+
+.property {
+  width: 100%;
+  max-width: 460px;
+}
+
+.card-video {
+  position: relative;
+  width: 100%;
+  height: 420px;
+  overflow: hidden;
+  background: #000;
+  border-radius: 16px 16px 0 0;
+}
+
+.card-video iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.card-video .tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 5;
+  background: #fff;
+  color: var(--green);
+  padding: 7px 11px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+
+  .card-video {
+    height: 400px;
+  }
+}
+
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .property {
+    max-width: 100%;
+  }
+
+  .card-video {
+    height: 460px;
+  }
+}
