@@ -1417,76 +1417,98 @@ $('editForm').onsubmit =
 
 
 /* =========================================================
+   BUY / RENT SEARCH TABS
+========================================================= */
+
+document
+    .querySelectorAll('.purpose button')
+    .forEach(button => {
+        button.addEventListener('click', () => {
+            document
+                .querySelectorAll('.purpose button')
+                .forEach(item => item.classList.remove('active'));
+
+            button.classList.add('active');
+            purpose = button.dataset.purpose || 'Buy';
+
+            const matching = properties.filter(property =>
+                purpose === 'Rent'
+                    ? property.listing === 'Rent'
+                    : property.listing === 'Sale'
+            );
+
+            render(matching);
+        });
+    });
+
+
+/* =========================================================
    FILTERS
 ========================================================= */
 
 function applyFilters() {
+    const locationEl = $('location');
+    const typeEl = $('type');
+    const budgetEl = $('budget');
+    const bhkEl = $('bhk');
 
-    const filtered =
-        properties.filter(property => {
+    const filtered = properties.filter(property => {
+        const purposeMatches =
+            purpose === 'Rent'
+                ? property.listing === 'Rent'
+                : property.listing === 'Sale';
 
-            const locationMatches =
-                !$('location').value
-                ||
-                property.location ===
-                    $('location').value;
+        const locationMatches =
+            !locationEl?.value ||
+            property.location === locationEl.value;
 
+        const typeMatches =
+            !typeEl?.value ||
+            property.propertyType === typeEl.value;
 
-            const typeMatches =
-                !$('type').value
-                ||
-                property.propertyType ===
-                    $('type').value;
+        const budgetMatches =
+            !budgetEl?.value ||
+            property.price <= Number(budgetEl.value);
 
+        const bhkMatches =
+            !bhkEl?.value ||
+            String(property.bedrooms) === bhkEl.value;
 
-            const budgetMatches =
-                !$('budget').value
-                ||
-                property.price <=
-                    Number(
-                        $('budget').value
-                    );
-
-
-            const bhkMatches =
-                !$('bhk').value
-                ||
-                String(
-                    property.bedrooms
-                ) ===
-                    $('bhk').value;
-
-
-            return (
-                locationMatches &&
-                typeMatches &&
-                budgetMatches &&
-                bhkMatches
-            );
-        });
-
+        return (
+            purposeMatches &&
+            locationMatches &&
+            typeMatches &&
+            budgetMatches &&
+            bhkMatches
+        );
+    });
 
     render(filtered);
+
+    $('properties')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+    });
 }
 
 
 function resetFilters() {
-
-    [
-        'location',
-        'type',
-        'budget',
-        'bhk'
-    ].forEach(id => {
-
-        if ($(id)) {
-            $(id).value = '';
-        }
-
+    ['location', 'type', 'budget', 'bhk'].forEach(id => {
+        if ($(id)) $(id).value = '';
     });
 
+    purpose = 'Buy';
 
-    render();
+    document
+        .querySelectorAll('.purpose button')
+        .forEach(button => {
+            button.classList.toggle(
+                'active',
+                button.dataset.purpose === 'Buy'
+            );
+        });
+
+    render(properties);
 }
 
 
