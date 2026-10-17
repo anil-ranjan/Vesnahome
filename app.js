@@ -3,7 +3,7 @@
 // Never put a Supabase secret/service_role key in this file.
 
 const SUPABASE_URL = 'https://flhlxxlxncbuvtsfjrnv.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_qQ1sZKEic6q93X6yGoh6Vg_Uyfj-633';
+const SUPABASE_PUBLISHABLE_KEY = 'PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE';
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -60,8 +60,38 @@ function normalizeProperty(p) {
     featured: !!p.featured,
     ownerName: p.owner_name || '',
     phone: p.phone || '',
-    createdAt: p.created_at || ''
+    createdAt: p.created_at || '',
+    images: p.images || [],
+    imageUrl: p.imageUrl || ''
   };
+}
+
+async function loadPropertyImages(property) {
+  if (!property.owner_id || !property.id) return [];
+
+  const folder = `${property.owner_id}/${property.id}`;
+  const { data: files, error } = await supabaseClient.storage
+    .from('property-images')
+    .list(folder, {
+      limit: 100,
+      sortBy: { column: 'created_at', order: 'asc' }
+    });
+
+  if (error) {
+    console.warn(`Unable to load photos for property ${property.id}:`, error.message);
+    return [];
+  }
+
+  return (files || [])
+    .filter(file => file.name && !file.name.startsWith('.'))
+    .map(file => {
+      const path = `${folder}/${file.name}`;
+      const { data } = supabaseClient.storage
+        .from('property-images')
+        .getPublicUrl(path);
+      return data.publicUrl;
+    })
+    .filter(Boolean);
 }
 
 async function loadProperties() {
@@ -80,7 +110,12 @@ async function loadProperties() {
     return;
   }
 
-  properties = (data || []).map(normalizeProperty);
+  const rowsWithImages = await Promise.all((data || []).map(async row => {
+    const images = await loadPropertyImages(row);
+    return { ...row, images, imageUrl: images[0] || '' };
+  }));
+
+  properties = rowsWithImages.map(normalizeProperty);
   render();
 }
 
@@ -97,9 +132,10 @@ function render(list = properties) {
 
   grid.innerHTML = list.map(p => `
     <article class="property">
-      <div class="photo">
+      <div class="photo${p.imageUrl ? '' : ' no-photo'}" ${p.imageUrl ? `style="background-image:url('${escapeHtml(p.imageUrl)}')"` : ''}>
         <span class="tag">FOR ${p.listing.toUpperCase()}</span>
         <button class="heart" onclick="favorite(event)" aria-label="Favorite">♡</button>
+        ${p.images.length ? `<span class="count">▧ ${p.images.length} photo${p.images.length === 1 ? '' : 's'}</span>` : '<span class="count">No photo</span>'}
       </div>
       <div class="property-body">
         <span class="location">⌖ ${escapeHtml(p.location)}</span>
@@ -162,18 +198,52 @@ function favorite(event) {
   event.target.style.color = '#e8673d';
 }
 
-function youtubeEmbed(url) {
+function getYoutubeVideoId(url) {
   if (!url) return '';
   try {
-    const u = new URL(url);
+    const u = new URL(url.trim());
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
     let id = '';
-    if (u.hostname.includes('youtu.be')) id = u.pathname.replace('/', '');
-    else id = u.searchParams.get('v') || '';
-    if (!id) return '';
-    return `<iframe class="video" src="https://www.youtube.com/embed/${encodeURIComponent(id)}" title="Property video" allowfullscreen></iframe>`;
+
+    if (host === 'youtu.be') {
+      id = u.pathname.split('/').filter(Boolean)[0] || '';
+    } else if (host.endsWith('youtube.com')) {
+      if (u.pathname === '/watch') id = u.searchParams.get('v') || '';
+      else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] || '';
+      else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+      else if (u.pathname.startsWith('/live/')) id = u.pathname.split('/')[2] || '';
+    }
+
+    return /^[a-zA-Z0-9_-]{6,20}$/.test(id) ? id : '';
   } catch {
     return '';
   }
+}
+
+function youtubeEmbed(url) {
+  const id = getYoutubeVideoId(url);
+  if (!id) return '';
+  return `
+    <section class="property-video-section">
+      <h3>Property video tour</h3>
+      <iframe
+        class="video"
+        src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}"
+        title="Property video walkthrough"
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </section>
+  `;
+}
+
+function selectPropertyImage(button, url) {
+  const main = $('detailMainImage');
+  if (main) main.src = url;
+  document.querySelectorAll('.detail-thumb').forEach(item => item.classList.remove('active'));
+  button?.classList.add('active');
 }
 
 function viewProperty(id) {
@@ -183,6 +253,14 @@ function viewProperty(id) {
   const digits = String(p.phone || '').replace(/[^0-9]/g, '');
   $('detailsContent').innerHTML = `
     <div class="detail-top">
+      ${p.images.length ? `
+        <div class="detail-gallery">
+          <img class="detail-img" id="detailMainImage" src="${escapeHtml(p.images[0])}" alt="${escapeHtml(p.title)}">
+          ${p.images.length > 1 ? `<div class="detail-thumbnails">${p.images.map((url, index) => `
+            <button type="button" class="detail-thumb${index === 0 ? ' active' : ''}" onclick="selectPropertyImage(this, '${escapeHtml(url)}')">
+              <img src="${escapeHtml(url)}" alt="Property photo ${index + 1}">
+            </button>`).join('')}</div>` : ''}
+        </div>` : '<div class="detail-no-photo">No property photo available</div>'}
       <div class="detail-info">
         <span class="eyebrow">FOR ${p.listing.toUpperCase()}</span>
         <h2>${escapeHtml(p.title)}</h2>
